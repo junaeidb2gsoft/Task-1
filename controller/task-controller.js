@@ -4,6 +4,7 @@ const { validationResult } = require("express-validator");
 const nanoid = require('nanoid').nanoid;
 const sharp = require('sharp');
 const fs = require('fs');
+const bcrypt = require('bcrypt');
 
 exports.createUsers = async (req, res, next) => {
     const validatiorError = validationResult(req);
@@ -20,7 +21,10 @@ exports.createUsers = async (req, res, next) => {
                 req.body.image = path
         }
     }
-    const { name, phone, email, password, role, image} = req.body;
+    const { name, phone, email, role, image} = req.body;
+    let retrievedPassword = req.body.password;
+    const salt = await bcrypt.genSalt(10); 
+    const password = await bcrypt.hash(retrievedPassword,salt);
     const newUser = new userModel({
         name,
         phone,
