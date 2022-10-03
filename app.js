@@ -5,7 +5,7 @@ const mongoose = require("mongoose");
 const taskRoute = require("./route/task-route");
 
 const app = express();
-app.use(bodyParser.json());
+app.use(bodyParser.json({limit: '50mb'}));
 
 app.use("/", taskRoute);
 

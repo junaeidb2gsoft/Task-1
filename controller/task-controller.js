@@ -1,17 +1,25 @@
-import { nanoid } from 'nanoid';
 const userModel = require("../model/task-model");
 const httpError = require("../model/http-error");
 const { validationResult } = require("express-validator");
-
+const nanoid = require('nanoid').nanoid;
+const sharp = require('sharp');
 
 exports.createUsers = async (req, res, next) => {
     const validatiorError = validationResult(req);
     if (!validatiorError.isEmpty()) {
         return res.status(400).json({ msg: validatiorError.array()[0].msg });
     }
-    const { name, phone, email, password, role, image } = req.body;
-    const userId = nanoid(5);
-    console.log(userId);
+    if (req.body.image) {
+        let imageUpdateCheck = req.body.image.substring(0, 6)
+            if (imageUpdateCheck !== 'public') {
+                let img = req.body.image.split(';base64,').pop()
+                let path = 'public/user/' + nanoid(21) + '.jpg'
+                let inputBuffer = Buffer.from(img, 'base64')
+                sharp(inputBuffer).toFile(path)
+                req.body.image = path
+        }
+    }
+    const { name, phone, email, password, role, image} = req.body;
     const newUser = new userModel({
         name,
         phone,
@@ -19,7 +27,7 @@ exports.createUsers = async (req, res, next) => {
         password,
         role,
         image,
-        userId
+        userId : nanoid(5)
     });
     try {
         await newUser.save();
@@ -65,6 +73,16 @@ exports.getAllUser = async (req, res, next) => {
 
 exports.updateUser = async (req, res, next) => {
     const userId = req.params.userId;
+    if (req.body.image) {
+        let imageUpdateCheck = req.body.image.substring(0, 6)
+            if (imageUpdateCheck !== 'public') {
+                let img = req.body.image.split(';base64,').pop()
+                let path = 'public/user/' + nanoid(21) + '.jpg'
+                let inputBuffer = Buffer.from(img, 'base64')
+                sharp(inputBuffer).toFile(path)
+                req.body.image = path
+        }
+    }
     let updatedUser;
     try {
         updatedUser = await userModel.findOneAndUpdate(

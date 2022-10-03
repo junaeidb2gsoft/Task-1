@@ -8,7 +8,7 @@ const usersSchema = new schema({
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
     role: { type: String , default: 'user' },
-    image: { type: String },
+    image: { type: String, default: ''},
     userId : {type : String}
 });
 
