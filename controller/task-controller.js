@@ -1,6 +1,8 @@
+import { nanoid } from 'nanoid';
 const userModel = require("../model/task-model");
 const httpError = require("../model/http-error");
 const { validationResult } = require("express-validator");
+
 
 exports.createUsers = async (req, res, next) => {
     const validatiorError = validationResult(req);
@@ -8,6 +10,8 @@ exports.createUsers = async (req, res, next) => {
         return res.status(400).json({ msg: validatiorError.array()[0].msg });
     }
     const { name, phone, email, password, role, image } = req.body;
+    const userId = nanoid(5);
+    console.log(userId);
     const newUser = new userModel({
         name,
         phone,
@@ -15,6 +19,7 @@ exports.createUsers = async (req, res, next) => {
         password,
         role,
         image,
+        userId
     });
     try {
         await newUser.save();

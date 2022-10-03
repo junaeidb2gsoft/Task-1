@@ -7,8 +7,9 @@ const usersSchema = new schema({
     phone: { type: String, required: true, unique: true },
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
-    role: { type: String },
+    role: { type: String , default: 'user' },
     image: { type: String },
+    userId : {type : String}
 });
 
 usersSchema.plugin(uniqueValidator);
