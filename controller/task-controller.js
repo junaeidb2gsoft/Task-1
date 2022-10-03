@@ -3,6 +3,7 @@ const httpError = require("../model/http-error");
 const { validationResult } = require("express-validator");
 const nanoid = require('nanoid').nanoid;
 const sharp = require('sharp');
+const fs = require('fs');
 
 exports.createUsers = async (req, res, next) => {
     const validatiorError = validationResult(req);
@@ -42,13 +43,13 @@ exports.getSingleUser = async (req, res, next) => {
     const userId = req.params.userId;
     let user;
     try {
-        user = await userModel.findById(userId);
+        user = await userModel.findOne({userId : userId});
     } catch (err) {
         const error = new httpError("Error in retrieving user Data", 422);
         return next(error);
     }
     if (!user) {
-        throw new Error("User not found", 404);
+        throw new httpError("User not found", 404);
     }
     res.status(200).json({
         userInfo: user,
@@ -83,10 +84,33 @@ exports.updateUser = async (req, res, next) => {
                 req.body.image = path
         }
     }
+
+    let prevInfo;
+    try{
+        prevInfo = await userModel.findOne({ userId : userId });
+    }catch (err) {
+        const error = new httpError("Error updating user", 500);
+        return next(error);
+    }
+    
+    if(prevInfo){
+        let prevImg = prevInfo.image;
+        if(prevImg != ''){
+            let prevImgPath = './'+prevImg;
+            //console.log(prevImgPath);
+            fs.unlink(prevImgPath, (err) => {
+                if(err){
+                    console.log(err);   
+                    return;
+                }
+            })
+        }
+    }
+
     let updatedUser;
     try {
         updatedUser = await userModel.findOneAndUpdate(
-            { _id: userId },
+            { userId : userId },
             { $set: req.body },
             { new: true }
         );
