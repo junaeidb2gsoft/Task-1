@@ -7,40 +7,40 @@ const fs = require('fs');
 const bcrypt = require('bcrypt');
 
 exports.createUsers = async (req, res, next) => {
-    const validatiorError = validationResult(req);
-    if (!validatiorError.isEmpty()) {
-        return res.status(400).json({ msg: validatiorError.array()[0].msg });
-    }
-    if (req.body.image) {
-        let imageUpdateCheck = req.body.image.substring(0, 6)
-            if (imageUpdateCheck !== 'public') {
+    try {
+        if (req.body.image) {
+            let imageUpdateCheck = req.body.image.substring(0, 6)
+                if (imageUpdateCheck !== 'public') {
                 let img = req.body.image.split(';base64,').pop()
                 let path = 'public/user/' + nanoid(21) + '.jpg'
                 let inputBuffer = Buffer.from(img, 'base64')
                 sharp(inputBuffer).toFile(path)
                 req.body.image = path
+            }
         }
-    }
-    const { name, phone, email, role, image} = req.body;
-    let retrievedPassword = req.body.password;
-    const salt = await bcrypt.genSalt(10); 
-    const password = await bcrypt.hash(retrievedPassword,salt);
-    const newUser = new userModel({
-        name,
-        phone,
-        email,
-        password,
-        role,
-        image,
-        userId : nanoid(5)
-    });
-    try {
-        await newUser.save();
+        const salt = bcrypt.genSaltSync(10);
+        const hash = bcrypt.hashSync(req.body.password, salt);
+        
+        req.body.password = hash;
+        req.body.userId = nanoid(5);
+    
+        let user = await userModel.create(req.body);
+        let jsonData = JSON.parse(JSON.stringify(user));
+        delete jsonData.password;
+
+        res.status(201).json({
+            data: jsonData,
+            success: true,
+            message: 'User created successfully!'
+        });
     } catch (err) {
-        const error = new httpError("User creation failed", 500);
-        return next(error);
+        console.log('Error = ', err);
+        res.status(500).json({
+            data: null,
+            success: false,
+            message: 'Internal Server Error Ocurred!'
+        });
     }
-    res.status(201).json({ msg: "New user created successfully." });
 };
 
 exports.getSingleUser = async (req, res, next) => {
@@ -56,7 +56,9 @@ exports.getSingleUser = async (req, res, next) => {
         throw new httpError("User not found", 404);
     }
     res.status(200).json({
-        userInfo: user,
+        data: user,
+        success: true,
+        message: 'View successfully!'
     });
 };
 
@@ -77,53 +79,50 @@ exports.getAllUser = async (req, res, next) => {
 };
 
 exports.updateUser = async (req, res, next) => {
-    const userId = req.params.userId;
-    if (req.body.image) {
-        let imageUpdateCheck = req.body.image.substring(0, 6)
+    try{
+        const userId = req.params.userId;
+        let prevInfo;
+        let updatedUser;
+        if (req.body.image) {
+            let imageUpdateCheck = req.body.image.substring(0, 6)
             if (imageUpdateCheck !== 'public') {
                 let img = req.body.image.split(';base64,').pop()
                 let path = 'public/user/' + nanoid(21) + '.jpg'
                 let inputBuffer = Buffer.from(img, 'base64')
                 sharp(inputBuffer).toFile(path)
                 req.body.image = path
-        }
-    }
-
-    let prevInfo;
-    try{
-        prevInfo = await userModel.findOne({ userId : userId });
-    }catch (err) {
-        const error = new httpError("Error updating user", 500);
-        return next(error);
-    }
-    
-    if(prevInfo){
-        let prevImg = prevInfo.image;
-        if(prevImg != ''){
-            let prevImgPath = './'+prevImg;
-            //console.log(prevImgPath);
-            fs.unlink(prevImgPath, (err) => {
-                if(err){
-                    console.log(err);   
-                    return;
+            }
+            prevInfo = await userModel.findOne({ userId : userId });
+            if(prevInfo){
+                let prevImg = prevInfo.image;
+                if(prevImg != ''){
+                    let prevImgPath = './'+prevImg;
+                    fs.unlink(prevImgPath, (err) => {
+                        if(err){
+                            console.log(err);   
+                            return;
+                        }
+                    })
                 }
-            })
+            }
         }
-    }
-
-    let updatedUser;
-    try {
         updatedUser = await userModel.findOneAndUpdate(
             { userId : userId },
             { $set: req.body },
             { new: true }
         );
-    } catch (err) {
-        const error = new httpError("Error updating user", 500);
-        return next(error);
+        let jsonData = JSON.parse(JSON.stringify(updatedUser));
+        delete jsonData.password;
+        res.status(202).json({
+            data: jsonData,
+            success: true,
+            message: 'User updated successfully!'
+        });
+    }catch(err){
+        res.status(500).json({
+            data: null,
+            success: false,
+            message: 'Internal Server Error Ocurred!'
+        });
     }
-    res.status(202).json({
-        msg: "User updated successfully",
-        user: updatedUser,
-    });
 };
